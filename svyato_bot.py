@@ -1,5 +1,14 @@
 
 import os
+import json
+
+SERVICE_ACCOUNT_FILE = "service_account.json"
+SERVICE_JSON = os.getenv("SERVICE_JSON")
+
+# Создаём файл из переменной окружения
+with open(SERVICE_ACCOUNT_FILE, "w", encoding="utf-8") as f:
+    f.write(SERVICE_JSON)
+import os
 import logging
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
