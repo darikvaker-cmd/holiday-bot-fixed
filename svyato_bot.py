@@ -5,6 +5,13 @@ import json
 SERVICE_ACCOUNT_FILE = "service_account.json"
 SERVICE_JSON = os.getenv("SERVICE_JSON")
 
+if not SERVICE_JSON:
+    raise ValueError("SERVICE_JSON не найден! Добавь его в Secrets на Render.")
+
+with open("service_account.json", "w", encoding="utf-8") as f:
+    f.write(SERVICE_JSON)
+
+
 # Создаём файл из переменной окружения
 with open(SERVICE_ACCOUNT_FILE, "w", encoding="utf-8") as f:
     f.write(SERVICE_JSON)
