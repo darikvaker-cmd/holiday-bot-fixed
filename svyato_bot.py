@@ -11,7 +11,6 @@ if not SERVICE_JSON:
 with open("service_account.json", "w", encoding="utf-8") as f:
     f.write(SERVICE_JSON)
 
-
 # Создаём файл из переменной окружения
 with open(SERVICE_ACCOUNT_FILE, "w", encoding="utf-8") as f:
     f.write(SERVICE_JSON)
