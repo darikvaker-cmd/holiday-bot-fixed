@@ -2,95 +2,110 @@ import os
 import logging
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
-import gspread
-from oauth2client.service_account import ServiceAccountCredentials
-import json
 
-# ------------------------------ ЛОГИ ----------------------------------
+import gspread
+from google.oauth2.service_account import Credentials
+
+# =====================================================
+# ЛОГИ
+# =====================================================
 logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s",
     level=logging.INFO
 )
 logger = logging.getLogger(__name__)
 
-# ---------------------- ПЕРЕМЕННЫЕ ОКРУЖЕНИЯ --------------------------
+# =====================================================
+# НАСТРОЙКИ
+# =====================================================
 BOT_TOKEN = "8214297458:AAGCcvnSdSJtXnySRj6u_BwNIqlpQgCEYWM"
-ADMIN_ID = 8208653042
 SHEET_NAME = "prazdnik"
-SERVICE_ACCOUNT_FILE = "service_account.json"
+SERVICE_ACCOUNT_FILE = "service_account.json"   # Должен лежать в проекте!
 
-# ------------------ СОЗДАЁМ ФАЙЛ GOOGLE JSON --------------------------
+# =====================================================
+# GOOGLE SHEETS
+# =====================================================
+SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
+
 if not os.path.exists(SERVICE_ACCOUNT_FILE):
-    if os.path.exists("@SvyatoKoprBot.json"):
-        # если файл в репо
-        with open("@SvyatoKoprBot.json", "r", encoding="utf-8") as src:
-            with open("service_account.json", "w", encoding="utf-8") as dst:
-                dst.write(src.read())
-    else:
-        raise FileNotFoundError(
-            "Файл @SvyatoKoprBot.json не найден! "
-            "Положи его рядом с svyato_bot.py."
-        )
+    raise FileNotFoundError(
+        "❌ Файл service_account.json не найден!\n"
+        "Загрузи свой JSON ключ на Render → Secrets → SERVICE_JSON\n"
+        "или положи рядом с ботом."
+    )
 
-# -------------------- GOOGLE SHEETS -----------------------------------
-scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-credentials = ServiceAccountCredentials.from_json_keyfile_name(SERVICE_ACCOUNT_FILE, scope)
-gc = gspread.authorize(credentials)
+creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+gc = gspread.authorize(creds)
 
+# открываем таблицу или создаём новую
 try:
     sheet = gc.open(SHEET_NAME).sheet1
 except gspread.SpreadsheetNotFound:
     sheet = gc.create(SHEET_NAME).sheet1
     sheet.append_row(["Ім'я", "Прізвище", "Статус"])
 
-# ----------------------- /start ---------------------------------------
+# =====================================================
+# /start
+# =====================================================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [["🎉 Прийду", "❌ Не прийду"]]
     markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
     await update.message.reply_text(
-        "Привіт! 😄 Напиши, будь ласка, своє ім'я та прізвище.\n"
-        "А потім обери варіант нижче 👇🎄",
-        reply_markup=markup
+        "Привіт! 🎄✨\n"
+        "Напиши, будь ласка, своє *ім’я та прізвище*.\n"
+        "Потім обери варіант нижче 👇",
+        reply_markup=markup,
+        parse_mode="Markdown"
     )
 
-# --------------------- ОБРАБОТКА СООБЩЕНИЙ ----------------------------
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+# =====================================================
+# Обработка сообщений
+# =====================================================
+async def msg_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip()
 
+    # кнопки
     if text in ["🎉 Прийду", "❌ Не прийду"]:
-        if "first" in context.user_data and "last" in context.user_data:
+        if "fname" in context.user_data and "lname" in context.user_data:
             sheet.append_row([
-                context.user_data["first"],
-                context.user_data["last"],
+                context.user_data["fname"],
+                context.user_data["lname"],
                 text
             ])
-
             await update.message.reply_text(
-                "Супер! 🎅 Твоя відповідь збережена 🎁",
+                "Дякую! 🎅 Твою відповідь збережено! 🎁",
                 reply_markup=ReplyKeyboardRemove()
             )
         else:
-            await update.message.reply_text("Спочатку напиши ім'я та прізвище 😅")
+            await update.message.reply_text("Спершу введи ім’я та прізвище 😊")
+        return
 
+    # ввод имени
+    parts = text.split()
+    if len(parts) >= 2:
+        context.user_data["fname"] = parts[0]
+        context.user_data["lname"] = " ".join(parts[1:])
+        await update.message.reply_text(
+            "Супер! Тепер обери варіант нижче 🎄👇"
+        )
     else:
-        parts = text.split()
-        if len(parts) >= 2:
-            context.user_data["first"] = parts[0]
-            context.user_data["last"] = " ".join(parts[1:])
-            await update.message.reply_text("Чудово! 🎄 Тепер обери варіант 👇")
-        else:
-            await update.message.reply_text("Напиши ім'я та прізвище через пробіл 😉")
+        await update.message.reply_text(
+            "Будь ласка, введи ім’я та прізвище через пробіл 🙂"
+        )
 
-# --------------------------- MAIN --------------------------------------
+# =====================================================
+# MAIN
+# =====================================================
 def main():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, msg_handler))
 
-    print("Бот працює! 🎄🎅❄️")
+    print("Бот запущено! 🎄❄️🎁")
     app.run_polling()
 
 if __name__ == "__main__":
     main()
+
