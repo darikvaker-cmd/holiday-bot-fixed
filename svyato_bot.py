@@ -11,6 +11,17 @@ logging.basicConfig(
     level=logging.INFO
 )
 logger = logging.getLogger(__name__)
+from google.oauth2.service_account import Credentials
+import gspread
+
+SCOPES = ["https://www.googleapis.com/auth/spreadsheets",
+          "https://www.googleapis.com/auth/drive"]
+
+creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+gc = gspread.authorize(creds)
+
+sheet = gc.open("prazdnik").sheet1
+
 
 # ------------------- НАСТРОЙКИ -------------------
 BOT_TOKEN = os.getenv("BOT_TOKEN")
