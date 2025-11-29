@@ -12,7 +12,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# ------------------- НАСТРОЙКИ -------------------
+# ------------------- ПЕРЕМЕННЫЕ -------------------
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = int(os.getenv("ADMIN_ID", 0))
 SHEET_NAME = os.getenv("SHEET_NAME", "prazdnik")
@@ -22,7 +22,7 @@ SERVICE_JSON = os.getenv("SERVICE_JSON")
 if not SERVICE_JSON:
     raise ValueError("❌ SERVICE_JSON не знайдено! Додай його в Render → Environment Variables")
 
-# ------------------- СОЗДАЁМ ФАЙЛ GOOGLE JSON -------------------
+# ------------------- СОЗДАЕМ ЛОКАЛЬНЫЙ JSON -------------------
 with open(SERVICE_ACCOUNT_FILE, "w", encoding="utf-8") as f:
     f.write(SERVICE_JSON)
 
@@ -30,8 +30,8 @@ with open(SERVICE_ACCOUNT_FILE, "w", encoding="utf-8") as f:
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets",
           "https://www.googleapis.com/auth/drive"]
 
-credentials = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
-gc = gspread.authorize(credentials)
+creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+gc = gspread.authorize(creds)
 
 try:
     sheet = gc.open(SHEET_NAME).sheet1
@@ -51,7 +51,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip()
 
-    # Обработка выбора "Прийду/Не прийду"
     if text in ["🎉 Прийду", "❌ Не прийду"]:
         if "first" in context.user_data and "last" in context.user_data:
             sheet.append_row([
@@ -67,7 +66,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("Спочатку введи ім'я та прізвище 😉")
         return
 
-    # Разделяем имя и фамилию
     parts = text.split()
     if len(parts) >= 2:
         context.user_data["first"] = parts[0]
@@ -76,13 +74,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.message.reply_text("Введи ім'я та прізвище через пробіл 😇")
 
-# ------------------- ЗАПУСК БОТА -------------------
+# ------------------- ЗАПУСК -------------------
 def main():
     if not BOT_TOKEN:
         raise ValueError("❌ BOT_TOKEN не знайдено! Додай його в Render → Environment Variables")
 
     app = ApplicationBuilder().token(BOT_TOKEN).build()
-
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
@@ -91,5 +88,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 
