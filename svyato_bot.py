@@ -11,17 +11,6 @@ logging.basicConfig(
     level=logging.INFO
 )
 logger = logging.getLogger(__name__)
-from google.oauth2.service_account import Credentials
-import gspread
-
-SCOPES = ["https://www.googleapis.com/auth/spreadsheets",
-          "https://www.googleapis.com/auth/drive"]
-
-creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
-gc = gspread.authorize(creds)
-
-sheet = gc.open("prazdnik").sheet1
-
 
 # ------------------- НАСТРОЙКИ -------------------
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -31,9 +20,9 @@ SERVICE_ACCOUNT_FILE = "service_account.json"
 SERVICE_JSON = os.getenv("SERVICE_JSON")
 
 if not SERVICE_JSON:
-    raise ValueError("❌ SERVICE_JSON не найден! Добавь его в Render → Environment.")
+    raise ValueError("❌ SERVICE_JSON не знайдено! Додай його в Render → Environment Variables")
 
-# ------------------- СОЗДАЕМ ФАЙЛ SERVICE ACCOUNT -------------------
+# ------------------- СОЗДАЁМ ФАЙЛ GOOGLE JSON -------------------
 with open(SERVICE_ACCOUNT_FILE, "w", encoding="utf-8") as f:
     f.write(SERVICE_JSON)
 
@@ -62,6 +51,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip()
 
+    # Обработка выбора "Прийду/Не прийду"
     if text in ["🎉 Прийду", "❌ Не прийду"]:
         if "first" in context.user_data and "last" in context.user_data:
             sheet.append_row([
@@ -89,7 +79,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ------------------- ЗАПУСК БОТА -------------------
 def main():
     if not BOT_TOKEN:
-        raise ValueError("❌ BOT_TOKEN не найден! Добавь его в Render → Environment.")
+        raise ValueError("❌ BOT_TOKEN не знайдено! Додай його в Render → Environment Variables")
 
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
