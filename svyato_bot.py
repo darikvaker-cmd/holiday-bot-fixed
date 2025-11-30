@@ -14,7 +14,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # ------------------- ПЕРЕМЕННЫЕ -------------------
-BOT_TOKEN = "8214297458:AAEKUVeuKAHREcxOiGNFRPYj7K59uK4INYc"
+BOT_TOKEN = "8107407395:AAG4Hi9Qgb5LRCcbg-vR_-UGAuFz_AHxmF4"
 ADMIN_ID = 8208653042
 DB_FILE = "participants.json"
 
