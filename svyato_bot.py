@@ -13,7 +13,7 @@ from telegram.ext import (
 # ---------------------------
 # НАСТРОЙКИ
 # ---------------------------
-BOT_TOKEN = "ВСТАВЬ_СЮДА_СВОЙ_ТОКЕН"  
+BOT_TOKEN = 8214297458:AAEKUVeuKAHREcxOiGNFRPYj7K59uK4INYc 
 ADMIN_ID = 8208653042
 
 DB_FILE = "database.json"
