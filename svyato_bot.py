@@ -83,4 +83,4 @@ async def callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     db = load_db()
     db[name] = "Приду" if query.data == "yes" else "Не приду"
-    save_db(db_
+    save_db(db)
