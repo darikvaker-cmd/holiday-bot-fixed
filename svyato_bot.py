@@ -1,139 +1,89 @@
+import os
 import json
 import logging
-from telegram import Update, ReplyKeyboardMarkup
-from telegram.ext import (
-    ApplicationBuilder,
-    CommandHandler,
-    MessageHandler,
-    ContextTypes,
-    ConversationHandler,
-    filters,
+from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
+
+# ------------------- ЛОГИ -------------------
+logging.basicConfig(
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    level=logging.INFO
 )
-
-# ---------------------------
-# НАСТРОЙКИ
-# ---------------------------
-BOT_TOKEN = "8214297458:AAEKUVeuKAHREcxOiGNFRPYj7K59uK4INYc"
-ADMIN_ID = 8208653042
-
-DB_FILE = "database.json"
-
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# ---------------------------
-# Загрузка / Сохранение БД
-# ---------------------------
-def load_db():
-    try:
-        with open(DB_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except:
-        return []
+# ------------------- ПЕРЕМЕННЫЕ -------------------
+BOT_TOKEN = "8214297458:AAEKUVeuKAHREcxOiGNFRPYj7K59uK4INYc"  # твой токен
+ADMIN_ID = 8208653042  # твой ID в Telegram
+DB_FILE = "participants.json"  # файл для хранения имен
 
-def save_db(data):
-    with open(DB_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+# ------------------- ЗАГРУЗКА БД -------------------
+if os.path.exists(DB_FILE):
+    with open(DB_FILE, "r", encoding="utf-8") as f:
+        db = json.load(f)
+else:
+    db = []
 
-# ---------------------------
-# Состояния диалога
-# ---------------------------
-ASK_NAME, ASK_STATUS = range(2)
-
-
-# ---------------------------
-# Команды
-# ---------------------------
+# ------------------- ХЭНДЛЕРЫ -------------------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Привіт! Напиши, будь ласка, своє ім’я:")
-    return ASK_NAME
-
-
-async def ask_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data["name"] = update.message.text.strip()
-
-    keyboard = [["Прийду"], ["Не прийду"]]
+    keyboard = [["🎉 Прийду", "❌ Не прийду"]]
+    markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
     await update.message.reply_text(
-        "Добре! Тепер обери варіант:",
-        reply_markup=ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
-    )
-    return ASK_STATUS
-
-
-async def ask_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    status = update.message.text.strip()
-    name = context.user_data["name"]
-
-    db = load_db()
-    db.append({"name": name, "status": status})
-    save_db(db)
-
-    await update.message.reply_text(
-        f"Дякую, {name}! Я записав тебе як: {status}.",
-        reply_markup=None
-    )
-    return ConversationHandler.END
-
-
-# ---------------------------
-# Админ-панель
-# ---------------------------
-async def admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.message.from_user.id != ADMIN_ID:
-        return await update.message.reply_text("⛔ У тебе немає прав!")
-
-    await update.message.reply_text(
-        "Адмін-меню:\n/list — список\n/clear — очистити базу"
+        "Привіт! 😊\nВведи своє ім'я, а потім обери свій варіант 🎄👇",
+        reply_markup=markup
     )
 
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = update.message.text.strip()
 
-async def list_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Проверяем, пришло ли имя или ответ
+    if text in ["🎉 Прийду", "❌ Не прийду"]:
+        if "name" in context.user_data:
+            db.append(context.user_data["name"])
+            # сохраняем в файл
+            with open(DB_FILE, "w", encoding="utf-8") as f:
+                json.dump(db, f, ensure_ascii=False, indent=2)
+            await update.message.reply_text(
+                f"Супер! 🎅 {context.user_data['name']} додано до списку гостей 🎁",
+                reply_markup=ReplyKeyboardRemove()
+            )
+        else:
+            await update.message.reply_text("Спочатку введи своє ім'я 😉")
+        return
+
+    # Сохраняем имя пользователя
+    context.user_data["name"] = text
+    await update.message.reply_text("Чудово! 🎄 Тепер обери свій варіант 👇")
+
+# ------------------- АДМИН КОМАНДЫ -------------------
+async def list_participants(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message.from_user.id != ADMIN_ID:
-        return await update.message.reply_text("⛔ Немає доступу!")
+        await update.message.reply_text("❌ У тебе немає доступу до цієї команди!")
+        return
+    if db:
+        names = "\n".join(db)
+        await update.message.reply_text(f"Список учасників:\n{names}")
+    else:
+        await update.message.reply_text("Список учасників поки що порожній.")
 
-    db = load_db()
-    if not db:
-        return await update.message.reply_text("База порожня.")
-
-    text = "Список учасників:\n\n"
-    for user in db:
-        text += f"{user['name']} — {user['status']}\n"
-
-    await update.message.reply_text(text)
-
-
-async def clear_db(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def clear_participants(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message.from_user.id != ADMIN_ID:
-        return await update.message.reply_text("⛔ Немає доступу!")
+        await update.message.reply_text("❌ У тебе немає доступу до цієї команди!")
+        return
+    db.clear()
+    with open(DB_FILE, "w", encoding="utf-8") as f:
+        json.dump(db, f, ensure_ascii=False, indent=2)
+    await update.message.reply_text("Список учасників очищено 🗑️")
 
-    save_db([])
-    await update.message.reply_text("Базу очищено!")
-
-
-# ---------------------------
-# Запуск бота
-# ---------------------------
+# ------------------- ЗАПУСК -------------------
 def main():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("list", list_participants))
+    app.add_handler(CommandHandler("clear", clear_participants))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    conv = ConversationHandler(
-        entry_points=[CommandHandler("start", start)],
-        states={
-            ASK_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, ask_name)],
-            ASK_STATUS: [MessageHandler(filters.TEXT & ~filters.COMMAND, ask_status)],
-        },
-        fallbacks=[],
-    )
-
-    app.add_handler(conv)
-    app.add_handler(CommandHandler("admin", admin))
-    app.add_handler(CommandHandler("list", list_users))
-    app.add_handler(CommandHandler("clear", clear_db))
-
+    print("Бот запущено! 🎄✨🎅")
     app.run_polling()
-
 
 if __name__ == "__main__":
     main()
-
-
